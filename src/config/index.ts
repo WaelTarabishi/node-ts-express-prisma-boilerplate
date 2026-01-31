@@ -55,6 +55,12 @@ export const config = {
     concurrency: env.WORKER_CONCURRENCY,
     maxRetries: env.WORKER_MAX_RETRIES,
   },
+
+  // AI Service
+  ai: {
+    baseUrl: env.AI_BASE_URL,
+    apiKey: env.AI_API_KEY,
+  },
 } as const;
 
 export type Config = typeof config;

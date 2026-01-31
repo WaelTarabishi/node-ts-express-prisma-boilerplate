@@ -36,6 +36,10 @@ const envSchema = z.object({
   // Worker Settings
   WORKER_CONCURRENCY: z.string().regex(/^\d+$/).transform(Number).default('5'),
   WORKER_MAX_RETRIES: z.string().regex(/^\d+$/).transform(Number).default('3'),
+
+  // AI Service
+  AI_BASE_URL: z.string().url().optional(),
+  AI_API_KEY: z.string().optional(),
 });
 
 // Validate and export environment variables

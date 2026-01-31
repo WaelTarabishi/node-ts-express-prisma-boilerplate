@@ -93,12 +93,14 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { userRoutes } from './modules/user/user.routes.js';
 import { tasksRoutes } from './modules/tasks/tasks.routes.js';
 import remoteConfigRoutes from './modules/remote-config/remote-config.routes.js';
+import { lessonsRoutes } from './modules/lessons/lessons.routes.js';
 
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/v1/tasks', tasksRoutes);
 app.use('/api/remote-config', remoteConfigRoutes);
+app.use('/api/lessons', lessonsRoutes);
 
 // 404 handler (must be after all routes)
 app.use(notFoundHandler);
