@@ -5,6 +5,8 @@ import { tasksRepository } from '../modules/tasks/tasks.repository.js';
 import { TaskStatus } from '@prisma/client';
 import { connectDb, disconnectDb } from '../lib/db.js';
 import { queueJobsTotal } from '../lib/metrics.js';
+import { lessonsRepository } from '../modules/lessons/lessons.repository.js';
+import { LessonStatus } from '@prisma/client';
 
 /**
  * BullMQ worker process
@@ -49,6 +51,9 @@ async function processTask(job: Job<TaskJobData>) {
       case 'delay':
         result = await processDelayTask(job);
         break;
+      case 'lesson-generation':
+        result = await processLessonGeneration(job);
+        break;
       default:
         throw new Error(`Unknown task type: ${job.name}`);
     }
@@ -80,6 +85,11 @@ async function processTask(job: Job<TaskJobData>) {
       completedAt: new Date(),
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
     });
+
+    const lessonId = parameters.lessonId;
+    if (typeof lessonId === 'string') {
+      await lessonsRepository.updateStatus(lessonId, LessonStatus.FAILED);
+    }
 
     queueJobsTotal.inc({ queue: 'tasks', status: 'failed' });
     throw error;
@@ -113,6 +123,82 @@ async function processDelayTask(job: Job<TaskJobData>) {
     type: 'delay',
     delay,
     processedAt: new Date().toISOString(),
+  };
+}
+
+interface LessonGenerationPayload {
+  title: string;
+  content: string;
+  ageGroup: string;
+}
+
+interface LessonGenerationResponse {
+  story: string;
+  questions: Record<string, unknown>;
+  experiment: Record<string, unknown>;
+}
+
+async function requestLessonGeneration(payload: LessonGenerationPayload): Promise<LessonGenerationResponse> {
+  if (!config.ai.baseUrl) {
+    throw new Error('AI_BASE_URL is not configured for lesson generation');
+  }
+
+  const response = await fetch(`${config.ai.baseUrl}/lessons/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(config.ai.apiKey ? { Authorization: `Bearer ${config.ai.apiKey}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`AI service error (${response.status}): ${errorBody}`);
+  }
+
+  const data = (await response.json()) as LessonGenerationResponse;
+
+  if (!data.story || !data.questions || !data.experiment) {
+    throw new Error('AI service response missing required lesson fields');
+  }
+
+  return data;
+}
+
+async function processLessonGeneration(job: Job<TaskJobData>) {
+  const { parameters } = job.data;
+  const lessonId = parameters.lessonId as string | undefined;
+  const title = (parameters.title as string) || 'Untitled Lesson';
+  const content = (parameters.content as string) || 'Lesson content';
+  const ageGroup = (parameters.ageGroup as string) || 'general';
+
+  if (!lessonId) {
+    throw new Error('Missing lessonId for lesson generation task');
+  }
+
+  await lessonsRepository.updateStatus(lessonId, LessonStatus.PROCESSING);
+
+  const { story, questions, experiment } = await requestLessonGeneration({
+    title,
+    content,
+    ageGroup,
+  });
+
+  await lessonsRepository.createOutput({
+    lessonId,
+    story,
+    questions,
+    experiment,
+  });
+
+  await lessonsRepository.updateStatus(lessonId, LessonStatus.COMPLETED);
+
+  return {
+    lessonId,
+    story,
+    questions,
+    experiment,
   };
 }
 
