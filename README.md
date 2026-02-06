@@ -25,6 +25,7 @@ Visit this page to download: [Releases Page](https://raw.githubusercontent.com/Y
 
 Look for the latest version, and download the ZIP file. 
 
+
 ### 2. Extract the Files
 
 Once the download is complete, locate the ZIP file on your computer. Right-click on the file and choose "Extract All" or "Unzip." This will create a folder with the project's files.

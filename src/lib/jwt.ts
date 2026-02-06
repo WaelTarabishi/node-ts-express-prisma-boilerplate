@@ -14,7 +14,7 @@ export interface JwtPayload {
  */
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
+    expiresIn: Number(config.jwt.expiresIn),
   });
 }
 

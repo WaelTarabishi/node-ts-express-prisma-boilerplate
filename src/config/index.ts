@@ -60,6 +60,7 @@ export const config = {
   ai: {
     baseUrl: env.AI_BASE_URL,
     apiKey: env.AI_API_KEY,
+    mock: env.AI_MOCK,
   },
 } as const;
 

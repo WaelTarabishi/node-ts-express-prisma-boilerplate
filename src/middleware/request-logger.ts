@@ -1,4 +1,5 @@
-import pinoHttp from 'pino-http';
+import { pinoHttp, stdSerializers } from 'pino-http';
+import type { Request, Response } from 'express';
 import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
 import { httpRequestDuration, httpRequestTotal } from '../lib/metrics.js';
@@ -7,10 +8,10 @@ import { httpRequestDuration, httpRequestTotal } from '../lib/metrics.js';
  * HTTP request logging middleware using pino-http
  * Logs all HTTP requests with correlation IDs and timing
  */
-export const requestLogger = pinoHttp({
+export const requestLogger = pinoHttp<Request, Response>({
   logger,
   autoLogging: config.env !== 'test',
-  customLogLevel: (req, res, err) => {
+  customLogLevel: (_req, res, err) => {
     if (res.statusCode >= 500 || err) {
       return 'error';
     }
@@ -23,7 +24,8 @@ export const requestLogger = pinoHttp({
     return `${req.method} ${req.url} ${res.statusCode}`;
   },
   customErrorMessage: (req, res, err) => {
-    return `${req.method} ${req.url} ${res.statusCode} - ${err.message}`;
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return `${req.method} ${req.url} ${res.statusCode} - ${message}`;
   },
   customProps: (req) => ({
     requestId: req.requestId,
@@ -34,8 +36,10 @@ export const requestLogger = pinoHttp({
     err: 'error',
     responseTime: 'duration',
   },
+  // Important: with customAttributeKeys + wrapSerializers:false, serializer keys
+  // must match the remapped attribute keys.
   serializers: {
-    req: (req) => ({
+    request: (req) => ({
       id: req.id,
       method: req.method,
       url: req.url,
@@ -46,9 +50,10 @@ export const requestLogger = pinoHttp({
       remoteAddress: req.socket.remoteAddress,
       requestId: req.requestId,
     }),
-    res: (res) => ({
+    response: (res) => ({
       statusCode: res.statusCode,
     }),
+    error: stdSerializers.err,
   },
   customReceivedMessage: (req) => {
     return `Incoming request: ${req.method} ${req.url}`;
@@ -58,23 +63,27 @@ export const requestLogger = pinoHttp({
   customReceivedObject: (req, res) => {
     const startTime = Date.now();
     res.on('finish', () => {
-      const duration = (Date.now() - startTime) / 1000;
-      const route = req.route?.path || req.path;
-
-      httpRequestDuration.observe(
-        {
+      try {
+        const duration = (Date.now() - startTime) / 1000;
+        const route = String(req.route?.path ?? req.path ?? 'unknown');
+        const statusCode = String(res.statusCode);
+        const labels = {
           method: req.method,
           route,
-          status_code: res.statusCode,
-        },
-        duration
-      );
+          status_code: statusCode,
+        };
 
-      httpRequestTotal.inc({
-        method: req.method,
-        route,
-        status_code: res.statusCode,
-      });
+        httpRequestDuration.observe(labels, duration);
+        httpRequestTotal.inc(labels);
+      } catch (error) {
+        req.log?.warn(
+          {
+            error: error instanceof Error ? error.message : String(error),
+            route: req.path,
+          },
+          'Failed to record HTTP metrics'
+        );
+      }
     });
     return {};
   },

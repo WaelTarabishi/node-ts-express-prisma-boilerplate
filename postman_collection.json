@@ -35,6 +35,11 @@
       "key": "task_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "lesson_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -369,6 +374,106 @@
               "path": ["api", "v1", "tasks", "{{task_id}}"]
             },
             "description": "Get a specific task by ID\n\nRequires: Authentication token\n\nNote: Users can only access their own tasks"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Lessons",
+      "item": [
+        {
+          "name": "Create Lesson",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('lesson_id', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Plant Life Cycles\",\n  \"content\": \"An overview of how seeds grow into plants and how plants reproduce.\",\n  \"ageGroup\": \"8-10\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lessons",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lessons"]
+            },
+            "description": "Create a lesson and enqueue generation\n\nRequires: Authentication token"
+          },
+          "response": []
+        },
+        {
+          "name": "List Lessons",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/lessons",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lessons"]
+            },
+            "description": "List lessons for the current user\n\nRequires: Authentication token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lesson by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/lessons/{{lesson_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lessons", "{{lesson_id}}"]
+            },
+            "description": "Get lesson details and generated output (when complete)\n\nRequires: Authentication token"
           },
           "response": []
         }

@@ -40,6 +40,10 @@ const envSchema = z.object({
   // AI Service
   AI_BASE_URL: z.string().url().optional(),
   AI_API_KEY: z.string().optional(),
+  AI_MOCK: z
+    .string()
+    .optional()
+    .transform((value) => value === 'true'),
 });
 
 // Validate and export environment variables

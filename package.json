@@ -51,6 +51,8 @@
     "@opentelemetry/auto-instrumentations-node": "^0.52.1",
     "@opentelemetry/sdk-node": "^0.56.0",
     "@prisma/client": "^6.19.0",
+    "@bull-board/api": "^6.16.4",
+    "@bull-board/express": "^6.16.4",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.63.0",
     "compression": "^1.7.4",

@@ -1,15 +1,17 @@
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
 import compression from 'compression';
+import cors from 'cors';
+import express from 'express';
 import { rateLimit } from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
+import helmet from 'helmet';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { ExpressAdapter } from '@bull-board/express';
 import { config } from './config/index.js';
-import { redis } from './lib/redis.js';
+import { getMetrics, getMetricsContentType } from './lib/metrics.js';
+import { taskQueue } from './lib/queue.js';
+import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { requestLogger } from './middleware/request-logger.js';
-import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import { getMetrics, getMetricsContentType } from './lib/metrics.js';
 
 /**
  * Express application setup
@@ -74,26 +76,37 @@ app.use(limiter);
 app.use(requestIdMiddleware);
 
 // Request logging middleware
-app.use(requestLogger);
+// app.use(requestLogger);
 
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Metrics endpoint (before other routes)
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', async (_, res) => {
   res.setHeader('Content-Type', getMetricsContentType());
   const metrics = await getMetrics();
   res.send(metrics);
 });
 
+// BullMQ dashboard
+const bullBoardAdapter = new ExpressAdapter();
+bullBoardAdapter.setBasePath('/admin/queues');
+
+createBullBoard({
+  queues: [new BullMQAdapter(taskQueue)],
+  serverAdapter: bullBoardAdapter,
+});
+
+app.use('/admin/queues', bullBoardAdapter.getRouter());
+
 // Routes
-import { healthRoutes } from './modules/health/health.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
-import { userRoutes } from './modules/user/user.routes.js';
-import { tasksRoutes } from './modules/tasks/tasks.routes.js';
-import remoteConfigRoutes from './modules/remote-config/remote-config.routes.js';
+import { healthRoutes } from './modules/health/health.routes.js';
 import { lessonsRoutes } from './modules/lessons/lessons.routes.js';
+import remoteConfigRoutes from './modules/remote-config/remote-config.routes.js';
+import { tasksRoutes } from './modules/tasks/tasks.routes.js';
+import { userRoutes } from './modules/user/user.routes.js';
 
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);

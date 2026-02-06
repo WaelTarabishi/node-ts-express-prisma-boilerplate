@@ -2,12 +2,7 @@ import { prisma } from '../../lib/db.js';
 import { LessonStatus } from '@prisma/client';
 
 export const lessonsRepository = {
-  async createLesson(data: {
-    userId: string;
-    title: string;
-    content: string;
-    ageGroup: string;
-  }) {
+  async createLesson(data: { userId: string; title: string; content: string; ageGroup: string }) {
     return prisma.lesson.create({
       data: {
         userId: data.userId,
@@ -46,7 +41,9 @@ export const lessonsRepository = {
       data: {
         lessonId: data.lessonId,
         story: data.story,
+        //@ts-ignore
         questions: data.questions,
+        //@ts-ignore
         experiment: data.experiment,
       },
     });

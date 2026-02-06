@@ -20,6 +20,9 @@ export const tasksRepository = {
       data: {
         type: data.type,
         userId: data.userId,
+        // will fixed later eafter understand concept of the code
+        
+        //@ts-ignore
         parameters: data.parameters,
         priority: data.priority ?? 0,
         status: TaskStatus.QUEUED,
